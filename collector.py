@@ -9,6 +9,8 @@ import json
 import time
 import re
 
+import pprint
+
 class AristaMetricsCollector(object):
     def __init__(self, config, target, exclude=list):
         self._exclude = exclude
@@ -25,6 +27,7 @@ class AristaMetricsCollector(object):
         self._memtotal = 0
         self._memfree = 0
         self._get_labels()
+        self._old_version = False
 
 
     def get_connection(self):
@@ -93,7 +96,9 @@ class AristaMetricsCollector(object):
             serial = switch_info['result'][0]['serialNumber']
             version = switch_info['result'][0]['version']
             self._switch_up = 1
-
+            if float(version[0:3]) < 4.23:
+                self._old_version = True
+            
         else:
             logging.debug(f"{self._target}: No result received from switch")
             self._switch_up = 0
@@ -145,7 +150,12 @@ class AristaMetricsCollector(object):
                 pass
 
             # get the cooling data
-            switch_cooling = self.connect_switch(command="show environment cooling")
+            if self._old_version: 
+                switch_cooling = self.connect_switch(command="show environment cooling")
+            else:
+                switch_cooling = self.connect_switch(command="show system environment cooling")
+                
+            pprint.pprint(switch_cooling)
 
             if switch_cooling:
                 cooling_metrics = GaugeMetricFamily('switch_monitoring_cooling','Arista Switch Monitoring Cooling Data',labels=self._labels)
@@ -190,7 +200,10 @@ class AristaMetricsCollector(object):
                 pass
 
             #get the temperature data
-            switch_temp = self.connect_switch(command="show environment temperature")
+            if self._old_version:
+                switch_temp = self.connect_switch(command="show environment temperature")
+            else:
+                switch_temp = self.connect_switch(command="show system environment temperature")
                                            
             if switch_temp:
                 temp_metrics = GaugeMetricFamily('switch_monitoring_temperature','Arista Switch Monitoring Temperature Data',labels=self._labels)
