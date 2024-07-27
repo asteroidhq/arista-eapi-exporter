@@ -9,8 +9,6 @@ import json
 import time
 import re
 
-import pprint
-
 class AristaMetricsCollector(object):
     def __init__(self, config, target, exclude=list):
         self._exclude = exclude
@@ -27,8 +25,6 @@ class AristaMetricsCollector(object):
         self._memtotal = 0
         self._memfree = 0
         self._get_labels()
-        self._old_version = False
-
 
     def get_connection(self):
         # switch off certificate validation
@@ -96,8 +92,6 @@ class AristaMetricsCollector(object):
             serial = switch_info['result'][0]['serialNumber']
             version = switch_info['result'][0]['version']
             self._switch_up = 1
-            if float(version[0:3]) < 4.23:
-                self._old_version = True
             
         else:
             logging.debug(f"{self._target}: No result received from switch")
@@ -110,6 +104,10 @@ class AristaMetricsCollector(object):
         self._labels.update(labels_switch)
 
     def collect(self):
+        old_version = False
+        # Check if we need to run old version commands
+        if float(self._labels['version'][0:4]) < 4.23:
+            old_version = True
 
         # Export the up and response metrics
         info_metrics = GaugeMetricFamily('arista_monitoring_info','Arista Switch Monitoring',labels=self._labels)
@@ -150,13 +148,11 @@ class AristaMetricsCollector(object):
                 pass
 
             # get the cooling data
-            if self._old_version: 
+            if old_version: 
                 switch_cooling = self.connect_switch(command="show environment cooling")
             else:
                 switch_cooling = self.connect_switch(command="show system environment cooling")
                 
-            pprint.pprint(switch_cooling)
-
             if switch_cooling:
                 cooling_metrics = GaugeMetricFamily('switch_monitoring_cooling','Arista Switch Monitoring Cooling Data',labels=self._labels)
                 # Read the ambientTemperature and overrideFanSpeed
@@ -200,7 +196,7 @@ class AristaMetricsCollector(object):
                 pass
 
             #get the temperature data
-            if self._old_version:
+            if old_version:
                 switch_temp = self.connect_switch(command="show environment temperature")
             else:
                 switch_temp = self.connect_switch(command="show system environment temperature")
