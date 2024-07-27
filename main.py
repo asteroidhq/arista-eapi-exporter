@@ -39,7 +39,7 @@ def falcon_app():
         try:
             httpd.serve_forever()
         except (KeyboardInterrupt, SystemExit):
-            logging.info("Stopping Redfish Prometheus Server")
+            logging.info("Stopping Arista EAPI Prometheus Server")
 
 def enable_logging(debug):
     # enable logging

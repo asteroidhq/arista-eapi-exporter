@@ -9,6 +9,8 @@ import json
 import time
 import re
 
+import pprint
+
 class AristaMetricsCollector(object):
     def __init__(self, config, target, exclude=list):
         self._exclude = exclude
@@ -141,6 +143,74 @@ class AristaMetricsCollector(object):
 
                 yield tcam_metrics
             
+            else:
+                pass
+
+            # get the cooling data
+            switch_cooling = self.connect_switch(command="show environment cooling")
+
+            if switch_cooling:
+                cooling_metrics = GaugeMetricFamily('switch_monitoring_cooling','Arista Switch Monitoring Cooling Data',labels=self._labels)
+                # Read the ambientTemperature and overrideFanSpeed
+                for key in ['ambientTemperature', 'overrideFanSpeed']:
+                    labels = {}
+                    labels = ({'stat': key})
+                    labels.update(self._labels)
+                    cooling_metrics.add_sample('arista_cooling', value=switch_cooling['result'][0][key], labels=labels)
+                # read results from the switch_cooling fanTraySlots and powerSupplySlots
+                for entry in switch_cooling['result'][0]['fanTraySlots']:
+                    for items in entry['fans']:
+                        for key in ['actualSpeed', 'configuredSpeed']:
+                            labels = {}
+                            labels = ({'fanLabel': entry['label'], 'stat': key})
+                            labels.update(self._labels)
+                            cooling_metrics.add_sample('arista_cooling', value=items[key], labels=labels)
+                for entry in switch_cooling['result'][0]['powerSupplySlots']:
+                    for items in entry['fans']:
+                        for key in ['actualSpeed', 'configuredSpeed']:
+                            labels = {}
+                            labels = ({'fanLabel': entry['label'], 'stat': key})
+                            labels.update(self._labels)
+                            cooling_metrics.add_sample('arista_cooling', value=items[key], labels=labels)
+                yield cooling_metrics
+            else:
+                pass
+
+            #get the power data
+            switch_power = self.connect_switch(command="show environment power")
+
+            if switch_power:
+                power_metrics = GaugeMetricFamily('switch_monitoring_power','Arista Switch Monitoring Power Data',labels=self._labels)
+                for entry in switch_power['result'][0]['powerSupplies']:
+                    for key in ['inputCurrent', 'outputCurrent', 'outputPower']:
+                        labels = {}
+                        labels = ({'powerSupply': entry, 'modelName': switch_power['result'][0]['powerSupplies'][entry]['modelName'],'stat': key})
+                        labels.update(self._labels)
+                        power_metrics.add_sample('arista_power', value=switch_power['result'][0]['powerSupplies'][entry][key], labels=labels)
+                yield power_metrics
+            else:
+                pass
+
+            #get the temperature data
+            switch_temp = self.connect_switch(command="show environment temperature")
+                                           
+            if switch_temp:
+                temp_metrics = GaugeMetricFamily('switch_monitoring_temperature','Arista Switch Monitoring Temperature Data',labels=self._labels)
+                for slot in ['cardSlots', 'powerSupplySlots']:
+                    for entry in switch_temp['result'][0][slot]:
+                        for items in entry['tempSensors']:
+                            for key in ['currentTemperature', 'maxTemperature']:
+                                labels = {}
+                                labels = ({'tempSensor': items['name'], 'description': items['description'], 'stat': key})
+                                labels.update(self._labels)
+                                temp_metrics.add_sample('arista_temp', value=items[key], labels=labels)
+                for sensor in switch_temp['result'][0]['tempSensors']:
+                    for key in ['currentTemperature', 'maxTemperature']:
+                        labels = {}
+                        labels = ({'tempSensor': sensor['name'], 'description': sensor['description'], 'stat': key})
+                        labels.update(self._labels)
+                        temp_metrics.add_sample('arista_temp', value=sensor[key], labels=labels)
+                yield temp_metrics
             else:
                 pass
 
