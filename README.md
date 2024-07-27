@@ -3,6 +3,9 @@
 This is a Prometheus Exporter for extracting metrics from an Arista Switch using the Arista's eAPI and the Python Client for eAPI [pyeapi](https://pypi.org/project/pyeapi/).
 
 The current implementation retrieves the memory usage data via `show hardware capacity` command and returns the table rows as a Gauge metric using some of the switches information as labels like the serial, the model, the firmware version and the hostname (arista_tcam).
+
+In addition, it will also return the switch environmental data: Fans (arista_cooling), Power supplies (arista_power), and Temperature (arista_temperature).
+
 It also returns a metric (arista_up) indicating if the switch was reachable or not and one returning the response time of the show version call (arista_response).
 
 Future implementations could easily also gather other data from the switches.

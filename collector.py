@@ -9,8 +9,6 @@ import json
 import time
 import re
 
-import pprint
-
 class AristaMetricsCollector(object):
     def __init__(self, config, target, exclude=list):
         self._exclude = exclude
