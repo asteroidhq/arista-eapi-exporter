@@ -34,7 +34,7 @@ class metricHandler:
             msg = "Target does not exist in DNS: {0}".format(excptn)
             logging.error(msg)
             resp.status = falcon.HTTP_400
-            resp.body = msg
+            resp.text = msg
 
         else:
             registry = AristaMetricsCollector(
@@ -44,4 +44,4 @@ class metricHandler:
                 )
 
             collected_metric = generate_latest(registry)
-            resp.body = collected_metric
+            resp.text = collected_metric
