@@ -104,10 +104,11 @@ class AristaMetricsCollector(object):
         self._labels.update(labels_switch)
 
     def collect(self):
-        old_version = False
+        #old_version = False
         # Check if we need to run old version commands
-        if float(self._labels['version'][0:4]) < 4.23:
-            old_version = True
+        #if float(self._labels['version'][0:4]) < 4.23:
+        #    old_version = True
+        eos_release = float(self._labels['version'][0:4])
 
         # Export the up and response metrics
         info_metrics = GaugeMetricFamily('arista_monitoring_info','Arista Switch Monitoring',labels=self._labels)
@@ -148,7 +149,7 @@ class AristaMetricsCollector(object):
                 pass
 
             # get the cooling data
-            if old_version: 
+            if eos_release < 4.23: 
                 switch_cooling = self.connect_switch(command="show environment cooling")
             else:
                 switch_cooling = self.connect_switch(command="show system environment cooling")
@@ -196,7 +197,7 @@ class AristaMetricsCollector(object):
                 pass
 
             #get the temperature data
-            if old_version:
+            if eos_release < 4.23:
                 switch_temp = self.connect_switch(command="show environment temperature")
             else:
                 switch_temp = self.connect_switch(command="show system environment temperature")
