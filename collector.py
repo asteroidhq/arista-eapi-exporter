@@ -5,9 +5,9 @@ import ssl
 import socket
 import logging
 import os
-import json
 import time
 import re
+
 
 class AristaMetricsCollector(object):
     def __init__(self, config, target, exclude=list):
@@ -222,7 +222,13 @@ class AristaMetricsCollector(object):
             else:
                 pass
 
+            #get the port statistics
             switch_port_stats = self.connect_switch(command="show interfaces counters rates")
+            #get the port statuses
+            switch_port_status = self.connect_switch(command="show interfaces status")
+            #get the transceivers data
+            switch_port_xcvr = self.connect_switch(command="show interfaces transceiver")
+
             regex_pattern = re.compile('.*reserved.*', re.IGNORECASE)
 
             if switch_port_stats:
@@ -230,11 +236,25 @@ class AristaMetricsCollector(object):
                 for port_entry in switch_port_stats['result'][0]['interfaces']:
                     port_values = switch_port_stats['result'][0]['interfaces'][port_entry]
                     port_description = port_values['description'].replace("-> ","")
+                    port_linkstate = switch_port_status['result'][0]['interfaceStatuses'][port_entry]['linkStatus']
+                    port_linestate = switch_port_status['result'][0]['interfaceStatuses'][port_entry]['lineProtocolStatus']
                     for port_value in port_values:
                         if port_value != "description" and port_value != 'interval' and not regex_pattern.match(port_description):
                             labels = {}
-                            labels = ({'port': port_entry, 'stat': port_value, 'description': port_description})
+                            # add the port, stat, description, linkState and lineState as labels to the switch info labels
+                            labels = ({'port': port_entry, 'stat': port_value, 'description': port_description, 'linkState': port_linkstate, 'lineState': port_linestate})
                             labels.update(self._labels)
                             port_stats_metrics.add_sample('arista_port_stats', value=float(port_values[port_value]), labels=labels)
+                    # check if the port has a transceiver, if so add the transceiver data
+                    if port_entry in switch_port_xcvr['result'][0]['interfaces']:
+                            # check if there is actual data in the for this interface
+                            if switch_port_xcvr['result'][0]['interfaces'][port_entry] != {}:
+                                port_xcvr = switch_port_xcvr['result'][0]['interfaces'][port_entry]
+                                for xcvr_value in ['rxPower','txPower','temperature','voltage']:
+                                    labels = {}
+                                    labels = ({'port': port_entry, 'stat': 'xcvr_'+xcvr_value, 'description': port_description, 'linkState': port_linkstate, 'lineState': port_linestate, 'xcvr_serial': port_xcvr['vendorSn']})
+                                    labels.update(self._labels)
+                                    port_stats_metrics.add_sample('arista_port_stats', value=float(port_xcvr[xcvr_value]), labels=labels)
 
                 yield port_stats_metrics
+            
